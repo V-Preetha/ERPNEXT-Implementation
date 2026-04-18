@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Transactions - Banking Integration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar-brand { color: #2490ef !important; font-weight: bold; }
+        .card { border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-primary { background-color: #2490ef; border-color: #2490ef; }
+        .btn-primary:hover { background-color: #1a7bd8; border-color: #1a7bd8; }
+        .status-matched { color: #28a745; font-weight: bold; }
+        .status-unmatched { color: #ffc107; font-weight: bold; }
+        .status-manual-match { color: #17a2b8; font-weight: bold; }
+        .status-chargeback { color: #dc3545; font-weight: bold; }
+        .table th { background-color: #f8f9fa; border-top: none; font-weight: 600; color: #495057; }
+        .amount-positive { color: #28a745; font-weight: bold; }
+        .amount-negative { color: #dc3545; font-weight: bold; }
+        .confidence-high { color: #28a745; }
+        .confidence-medium { color: #ffc107; }
+        .confidence-low { color: #dc3545; }
+        .iban-text { font-family: monospace; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-university me-2"></i>
+                Banking Integration - ERPNext
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/bank-accounts">
+                    <i class="fas fa-building-columns me-1"></i>Bank Accounts
+                </a>
+                <a class="nav-link active" href="/transactions">
+                    <i class="fas fa-exchange-alt me-1"></i>Transactions
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2><i class="fas fa-exchange-alt me-2"></i>Bank Transactions</h2>
+                        <p class="text-muted mb-0">View and manage bank transactions with automatic matching</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-success me-2" onclick="runMatching()">
+                            <i class="fas fa-robot me-1"></i>Run Matching Engine
+                        </button>
+                        <button class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i>Add Transaction
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="Matched">Matched</option>
+                                    <option value="Unmatched">Unmatched</option>
+                                    <option value="Manual Match">Manual Match</option>
+                                    <option value="Chargeback">Chargeback</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Date From</label>
+                                <input type="date" class="form-control" id="dateFrom">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Date To</label>
+                                <input type="date" class="form-control" id="dateTo">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
+                                    <i class="fas fa-filter me-1"></i>Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Reference</th>
+                                        <th>IBAN</th>
+                                        <th>Status</th>
+                                        <th>Confidence</th>
+                                        <th>Matched Payment</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsTable">
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-calendar me-1"></i>{{ transaction.transaction_date }}
+                                        </td>
+                                        <td>
+                                            <span class="amount-{{ 'positive' if transaction.amount > 0 else 'negative' }}">
+                                                €{{ "%.2f"|format(transaction.amount) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <code>{{ transaction.reference or 'N/A' }}</code>
+                                        </td>
+                                        <td>
+                                            <span class="iban-text">{{ transaction.iban or 'N/A' }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="status-{{ transaction.status.lower().replace(' ', '-') }}">
+                                                <i class="fas fa-circle me-1"></i>{{ transaction.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if transaction.confidence_score %}
+                                                <span class="confidence-{{ 'high' if transaction.confidence_score >= 90 else 'medium' if transaction.confidence_score >= 50 else 'low' }}">
+                                                    {{ transaction.confidence_score }}%
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if transaction.matched_payment %}
+                                                <a href="#" class="text-decoration-none">
+                                                    {{ transaction.matched_payment }}
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if transaction.status == 'Unmatched' %}
+                                            <button class="btn btn-sm btn-warning" onclick="showMatchDialog('{{ transaction.name }}')">
+                                                <i class="fas fa-link me-1"></i>Match
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">{{ transactions|length }}</h3>
+                                <p class="text-muted mb-0">Total Transactions</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success">{{ transactions|selectattr('status', 'equalto', 'Matched')|list|length }}</h3>
+                                <p class="text-muted mb-0">Auto Matched</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning">{{ transactions|selectattr('status', 'equalto', 'Unmatched')|list|length }}</h3>
+                                <p class="text-muted mb-0">Unmatched</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-info">€{{ "%.2f"|format(transactions|sum(attribute='amount')) }}</h3>
+                                <p class="text-muted mb-0">Total Amount</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Dialog -->
+    <div class="modal fade" id="matchModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Manual Transaction Matching</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="matchForm">
+                        <div class="mb-3">
+                            <label class="form-label">Transaction</label>
+                            <input type="text" class="form-control" id="transactionName" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Payment Entry</label>
+                            <select class="form-select" id="paymentSelect" required>
+                                <option value="">Select Payment...</option>
+                                <option value="PAY-001">PAY-001 - Invoice INV-2026-001</option>
+                                <option value="PAY-002">PAY-002 - Supplier Payment</option>
+                                <option value="PAY-003">PAY-003 - Invoice INV-2026-003</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="performManualMatch()">Match Transaction</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="actionToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                <strong class="me-auto">Action Status</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="actionMessage">
+                Action completed successfully!
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentTransaction = '';
+
+        function showMatchDialog(transactionName) {
+            currentTransaction = transactionName;
+            document.getElementById('transactionName').value = transactionName;
+            document.getElementById('paymentSelect').value = '';
+            new bootstrap.Modal(document.getElementById('matchModal')).show();
+        }
+
+        async function performManualMatch() {
+            const paymentName = document.getElementById('paymentSelect').value;
+            if (!paymentName) {
+                alert('Please select a payment entry');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/manual-match', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        transaction_name: currentTransaction,
+                        payment_name: paymentName
+                    })
+                });
+
+                const result = await response.json();
+
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('matchModal')).hide();
+
+                // Show success message
+                const toast = new bootstrap.Toast(document.getElementById('actionToast'));
+                document.getElementById('actionMessage').textContent = result.message;
+                toast.show();
+
+                // Refresh page after short delay
+                setTimeout(() => location.reload(), 2000);
+
+            } catch (error) {
+                console.error('Manual match failed:', error);
+                alert('Manual match failed. Please try again.');
+            }
+        }
+
+        async function runMatching() {
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Running...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch('/api/run-matching', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const result = await response.json();
+
+                const toast = new bootstrap.Toast(document.getElementById('actionToast'));
+                document.getElementById('actionMessage').textContent = result.message;
+                toast.show();
+
+                // Refresh page after short delay
+                setTimeout(() => location.reload(), 2000);
+
+            } catch (error) {
+                console.error('Matching failed:', error);
+                const toast = new bootstrap.Toast(document.getElementById('actionToast'));
+                document.getElementById('actionMessage').textContent = 'Matching failed. Please try again.';
+                toast.show();
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function applyFilters() {
+            const status = document.getElementById('statusFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+
+            const rows = document.querySelectorAll('#transactionsTable tr');
+
+            rows.forEach(row => {
+                let show = true;
+
+                if (status) {
+                    const statusCell = row.cells[4].textContent.trim();
+                    if (!statusCell.includes(status)) {
+                        show = false;
+                    }
+                }
+
+                if (dateFrom || dateTo) {
+                    const dateCell = row.cells[0].textContent.trim();
+                    const rowDate = new Date(dateCell);
+
+                    if (dateFrom && rowDate < new Date(dateFrom)) {
+                        show = false;
+                    }
+                    if (dateTo && rowDate > new Date(dateTo + 'T23:59:59')) {
+                        show = false;
+                    }
+                }
+
+                row.style.display = show ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>

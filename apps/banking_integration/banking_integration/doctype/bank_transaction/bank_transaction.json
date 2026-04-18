@@ -1,0 +1,158 @@
+{
+    "autoname": "field:transaction_id",
+    "creation": "2024-01-01 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "transaction_id",
+        "bank_account",
+        "transaction_date",
+        "value_date",
+        "amount",
+        "currency",
+        "description",
+        "reference",
+        "iban",
+        "name",
+        "matched_payment",
+        "matched_invoice",
+        "confidence_score",
+        "status",
+        "chargeback_reason",
+        "audit_log"
+    ],
+    "fields": [
+        {
+            "fieldname": "transaction_id",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Transaction ID",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "bank_account",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Bank Account",
+            "options": "Bank Account",
+            "reqd": 1
+        },
+        {
+            "fieldname": "transaction_date",
+            "fieldtype": "Date",
+            "label": "Transaction Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "value_date",
+            "fieldtype": "Date",
+            "label": "Value Date",
+            "reqd": 1
+        },
+        {
+            "fieldname": "amount",
+            "fieldtype": "Float",
+            "in_list_view": 1,
+            "label": "Amount",
+            "reqd": 1
+        },
+        {
+            "fieldname": "currency",
+            "fieldtype": "Link",
+            "label": "Currency",
+            "options": "Currency",
+            "reqd": 1
+        },
+        {
+            "fieldname": "description",
+            "fieldtype": "Text",
+            "label": "Description"
+        },
+        {
+            "fieldname": "reference",
+            "fieldtype": "Data",
+            "label": "Reference"
+        },
+        {
+            "fieldname": "iban",
+            "fieldtype": "Data",
+            "label": "IBAN"
+        },
+        {
+            "fieldname": "name",
+            "fieldtype": "Data",
+            "label": "Name"
+        },
+        {
+            "fieldname": "matched_payment",
+            "fieldtype": "Link",
+            "label": "Matched Payment",
+            "options": "Payment Entry"
+        },
+        {
+            "fieldname": "matched_invoice",
+            "fieldtype": "Link",
+            "label": "Matched Invoice",
+            "options": "Purchase Invoice"
+        },
+        {
+            "fieldname": "confidence_score",
+            "fieldtype": "Int",
+            "label": "Confidence Score"
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "in_list_view": 1,
+            "label": "Status",
+            "options": "Unmatched\nMatched\nManual Match\nChargeback",
+            "default": "Unmatched"
+        },
+        {
+            "fieldname": "chargeback_reason",
+            "fieldtype": "Text",
+            "label": "Chargeback Reason"
+        },
+        {
+            "fieldname": "audit_log",
+            "fieldtype": "Text",
+            "label": "Audit Log"
+        }
+    ],
+    "modified": "2024-01-01 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Banking",
+    "name": "Bank Transaction",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Accounts Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "transaction_date",
+    "sort_order": "DESC",
+    "title_field": "transaction_id"
+}

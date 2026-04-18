@@ -1,0 +1,132 @@
+{
+    "autoname": "field:bank_account_name",
+    "creation": "2024-01-01 00:00:00.000000",
+    "doctype": "DocType",
+    "editable_grid": 1,
+    "engine": "InnoDB",
+    "field_order": [
+        "bank_account_name",
+        "company",
+        "bank_name",
+        "iban",
+        "account_number",
+        "ebics_user_id",
+        "ebics_host_id",
+        "ebics_partner_id",
+        "ebics_password",
+        "last_sync_date",
+        "status",
+        "is_active"
+    ],
+    "fields": [
+        {
+            "fieldname": "bank_account_name",
+            "fieldtype": "Data",
+            "in_list_view": 1,
+            "label": "Bank Account Name",
+            "reqd": 1,
+            "unique": 1
+        },
+        {
+            "fieldname": "company",
+            "fieldtype": "Link",
+            "in_list_view": 1,
+            "label": "Company",
+            "options": "Company",
+            "reqd": 1
+        },
+        {
+            "fieldname": "bank_name",
+            "fieldtype": "Data",
+            "label": "Bank Name",
+            "reqd": 1
+        },
+        {
+            "fieldname": "iban",
+            "fieldtype": "Data",
+            "label": "IBAN",
+            "reqd": 1
+        },
+        {
+            "fieldname": "account_number",
+            "fieldtype": "Data",
+            "label": "Account Number"
+        },
+        {
+            "fieldname": "ebics_user_id",
+            "fieldtype": "Data",
+            "label": "EBICS User ID",
+            "reqd": 1
+        },
+        {
+            "fieldname": "ebics_host_id",
+            "fieldtype": "Data",
+            "label": "EBICS Host ID",
+            "reqd": 1
+        },
+        {
+            "fieldname": "ebics_partner_id",
+            "fieldtype": "Data",
+            "label": "EBICS Partner ID",
+            "reqd": 1
+        },
+        {
+            "fieldname": "ebics_password",
+            "fieldtype": "Password",
+            "label": "EBICS Password",
+            "reqd": 1
+        },
+        {
+            "fieldname": "last_sync_date",
+            "fieldtype": "Datetime",
+            "label": "Last Sync Date"
+        },
+        {
+            "fieldname": "status",
+            "fieldtype": "Select",
+            "label": "Status",
+            "options": "Active\nInactive\nError",
+            "default": "Active"
+        },
+        {
+            "fieldname": "is_active",
+            "fieldtype": "Check",
+            "label": "Is Active",
+            "default": 1
+        }
+    ],
+    "modified": "2024-01-01 00:00:00.000000",
+    "modified_by": "Administrator",
+    "module": "Banking",
+    "name": "Bank Account",
+    "owner": "Administrator",
+    "permissions": [
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "System Manager",
+            "share": 1,
+            "write": 1
+        },
+        {
+            "create": 1,
+            "delete": 1,
+            "email": 1,
+            "export": 1,
+            "print": 1,
+            "read": 1,
+            "report": 1,
+            "role": "Accounts Manager",
+            "share": 1,
+            "write": 1
+        }
+    ],
+    "sort_field": "modified",
+    "sort_order": "DESC",
+    "title_field": "bank_account_name"
+}

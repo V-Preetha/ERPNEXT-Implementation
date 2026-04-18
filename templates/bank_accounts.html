@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Accounts - Banking Integration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .navbar-brand { color: #2490ef !important; font-weight: bold; }
+        .card { border: none; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-primary { background-color: #2490ef; border-color: #2490ef; }
+        .btn-primary:hover { background-color: #1a7bd8; border-color: #1a7bd8; }
+        .status-active { color: #28a745; font-weight: bold; }
+        .status-inactive { color: #6c757d; font-weight: bold; }
+        .status-error { color: #dc3545; font-weight: bold; }
+        .table th { background-color: #f8f9fa; border-top: none; font-weight: 600; color: #495057; }
+        .iban-text { font-family: monospace; font-size: 0.9em; }
+        .sync-btn { min-width: 80px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-university me-2"></i>
+                Banking Integration - ERPNext
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/bank-accounts">
+                    <i class="fas fa-building-columns me-1"></i>Bank Accounts
+                </a>
+                <a class="nav-link" href="/transactions">
+                    <i class="fas fa-exchange-alt me-1"></i>Transactions
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2><i class="fas fa-building-columns me-2"></i>Bank Accounts</h2>
+                        <p class="text-muted mb-0">Manage your EBICS-connected bank accounts</p>
+                    </div>
+                    <button class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Add Bank Account
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Account Name</th>
+                                        <th>Bank Name</th>
+                                        <th>IBAN</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                        <th>Last Sync</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for account in accounts %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ account.name }}</strong>
+                                        </td>
+                                        <td>{{ account.bank_name }}</td>
+                                        <td>
+                                            <span class="iban-text">{{ account.iban }}</span>
+                                        </td>
+                                        <td>{{ account.company }}</td>
+                                        <td>
+                                            <span class="status-{{ account.status.lower() }}">
+                                                <i class="fas fa-circle me-1"></i>{{ account.status }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if account.last_sync_date %}
+                                                <i class="fas fa-clock me-1"></i>{{ account.last_sync_date }}
+                                            {% else %}
+                                                <span class="text-muted">Never</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-outline-primary sync-btn"
+                                                        onclick="syncAccount('{{ account.name }}')">
+                                                    <i class="fas fa-sync me-1"></i>Sync
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary">
+                                                    <i class="fas fa-edit me-1"></i>Edit
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">{{ accounts|length }}</h3>
+                                <p class="text-muted mb-0">Total Accounts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success">{{ accounts|selectattr('status', 'equalto', 'Active')|list|length }}</h3>
+                                <p class="text-muted mb-0">Active Accounts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning">{{ accounts|selectattr('status', 'equalto', 'Inactive')|list|length }}</h3>
+                                <p class="text-muted mb-0">Inactive Accounts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-info">24</h3>
+                                <p class="text-muted mb-0">Transactions Today</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+        <div id="syncToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="fas fa-info-circle text-primary me-2"></i>
+                <strong class="me-auto">Sync Status</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+                Sync in progress...
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function syncAccount(accountName) {
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Syncing...';
+            button.disabled = true;
+
+            try {
+                const response = await fetch('/api/sync-account', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ account_name: accountName })
+                });
+
+                const result = await response.json();
+
+                // Show toast
+                const toast = new bootstrap.Toast(document.getElementById('syncToast'));
+                document.getElementById('toastMessage').textContent = result.message;
+                toast.show();
+
+                // Update last sync date
+                if (result.status === 'success') {
+                    const row = button.closest('tr');
+                    const lastSyncCell = row.cells[5];
+                    const now = new Date().toISOString().split('T')[0];
+                    lastSyncCell.innerHTML = `<i class="fas fa-clock me-1"></i>${now}`;
+                }
+
+            } catch (error) {
+                console.error('Sync failed:', error);
+                const toast = new bootstrap.Toast(document.getElementById('syncToast'));
+                document.getElementById('toastMessage').textContent = 'Sync failed. Please try again.';
+                toast.show();
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
