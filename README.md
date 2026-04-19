@@ -9,7 +9,7 @@ An intelligent banking integration system for ERPNext that automates transaction
 - Connects bank transactions to ERP invoices  
 - Automatically matches transactions using a confidence-based scoring system  
 - Provides explainable matching (why something matched)  
-- Generates XML-based payment instructions for outgoing transfers (SEPA-style format)
+- Generates SEPA payment files (ISO 20022 pain.001.001.03 XML)
 - Handles edge cases like invalid IBAN and inactive accounts  
 
 ---
@@ -60,9 +60,10 @@ Each transaction includes:
 - Final confidence score  
 
 ### 💳 SEPA Payment Generation
-- Generates ISO 20022 **pain.001 XML**  
-- Supports batch payments  
-- Validates payment structure before submission  
+- Generates ISO 20022 compliant **pain.001.001.03 XML**
+- Supports structured bank transfer instructions
+- Includes debtor/creditor validation
+- Ready for EBICS bank submission (extensible)
 
 ---
 
