@@ -409,6 +409,7 @@ python ui_demo.py
 - API endpoints responding correctly
 - Error handling and logging implemented
 
+<<<<<<< HEAD
 ### 📋 Production Ready Checklist
 - [x] Code implementation complete
 - [x] Security measures implemented
@@ -418,6 +419,8 @@ python ui_demo.py
 - [ ] GitHub repository setup (pending)
 - [ ] Production deployment tested (requires Linux environment)
 
+=======
+>>>>>>> df2c7c0d796e9735cdddb5a61b2489dcf02b0293
 ## Development
 
 ### Running Tests
@@ -440,16 +443,14 @@ bench --site your-site run-tests banking_integration
 
 MIT License - see LICENSE file for details
 
-## Support
-
-For support and questions:
-- Documentation: [Link to docs]
-- Issues: [GitHub Issues]
-- Email: support@yourcompany.com
 
 ---
 
 **Version**: 1.0.0 (Production Ready)
 **Last Updated**: April 19, 2026
 **Compatible with**: ERPNext v14+, Frappe v14+
+<<<<<<< HEAD
 **Status**: ✅ Fully Implemented & Tested
+=======
+**Status**: ✅ Fully Implemented & Tested
+>>>>>>> df2c7c0d796e9735cdddb5a61b2489dcf02b0293
