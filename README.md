@@ -426,6 +426,12 @@ bench --site your-site run-tests banking_integration
 3. Add tests for new features
 4. Submit pull request
 
+###Website 
+<img width="1331" height="1322" alt="image" src="https://github.com/user-attachments/assets/12715219-3902-4de1-a7ed-9194b715cc1f" />
+<img width="1335" height="528" alt="image" src="https://github.com/user-attachments/assets/f833d4b1-a2de-48fe-9292-187d6608aca2" />
+<img width="1963" height="808" alt="image" src="https://github.com/user-attachments/assets/2f48b4f8-0713-41f1-988b-e2c97cfc788d" />
+<img width="793" height="904" alt="image" src="https://github.com/user-attachments/assets/e70a7478-7a32-4fee-92aa-83ebe5fe8576" />
+
 ## License
 
 MIT License - see LICENSE file for details
