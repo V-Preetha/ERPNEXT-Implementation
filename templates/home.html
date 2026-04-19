@@ -107,7 +107,7 @@
                                         <i class="fas fa-euro-sign fa-2x text-warning mb-3"></i>
                                         <h5>SEPA Payments</h5>
                                         <p>Generate and send SEPA payments securely</p>
-                                        <a href="#" class="btn btn-primary" onclick="alert('SEPA payment generation would be available in full ERPNext environment')">Generate Payment</a>
+                                        <a href="#" class="btn btn-primary" onclick="showSepaModal()">Generate Payment</a>
                                     </div>
                                 </div>
                             </div>
@@ -160,6 +160,123 @@
         </div>
     </div>
 
+    <!-- SEPA Payment Modal -->
+    <div class="modal fade" id="sepaModal" tabindex="-1" aria-labelledby="sepaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sepaModalLabel">Generate SEPA Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="sepaForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Creditor Information</h6>
+                                <div class="mb-3">
+                                    <label for="creditor_name" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="creditor_name" value="Demo Company GmbH" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="creditor_iban" class="form-label">IBAN</label>
+                                    <input type="text" class="form-control" id="creditor_iban" value="DE89370400440532013000" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="creditor_bic" class="form-label">BIC</label>
+                                    <input type="text" class="form-control" id="creditor_bic" value="DEUTDEFF" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Debtor Information</h6>
+                                <div class="mb-3">
+                                    <label for="debtor_name" class="form-label">Name</label>
+                                    <input type="text" class="form-control" id="debtor_name" value="Supplier GmbH" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="debtor_iban" class="form-label">IBAN</label>
+                                    <input type="text" class="form-control" id="debtor_iban" value="AT611904300234573201" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="debtor_bic" class="form-label">BIC</label>
+                                    <input type="text" class="form-control" id="debtor_bic" value="BKAUATWW" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="amount" class="form-label">Amount (€)</label>
+                                    <input type="number" step="0.01" class="form-control" id="amount" value="1250.00" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="reference" class="form-label">Reference</label>
+                                    <input type="text" class="form-control" id="reference" value="INV-2026-001" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="execution_date" class="form-label">Execution Date</label>
+                                    <input type="date" class="form-control" id="execution_date" value="2026-04-21" required>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="xmlOutput" class="mt-3" style="display: none;">
+                        <h6>Generated SEPA XML:</h6>
+                        <pre id="xmlContent" class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="generateSepaPayment()">Generate XML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showSepaModal() {
+            const modal = new bootstrap.Modal(document.getElementById('sepaModal'));
+            modal.show();
+        }
+
+        function generateSepaPayment() {
+            const data = {
+                creditor_name: document.getElementById('creditor_name').value,
+                creditor_iban: document.getElementById('creditor_iban').value,
+                creditor_bic: document.getElementById('creditor_bic').value,
+                debtor_name: document.getElementById('debtor_name').value,
+                debtor_iban: document.getElementById('debtor_iban').value,
+                debtor_bic: document.getElementById('debtor_bic').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                reference: document.getElementById('reference').value,
+                execution_date: document.getElementById('execution_date').value
+            };
+
+            fetch('/api/generate-sepa-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    document.getElementById('xmlContent').textContent = result.xml;
+                    document.getElementById('xmlOutput').style.display = 'block';
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating the SEPA payment.');
+            });
+        }
+    </script>
 </body>
 </html>
