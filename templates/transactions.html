@@ -13,16 +13,21 @@
         .btn-primary { background-color: #2490ef; border-color: #2490ef; }
         .btn-primary:hover { background-color: #1a7bd8; border-color: #1a7bd8; }
         .status-matched { color: #28a745; font-weight: bold; }
+        .status-review { color: #fd7e14; font-weight: bold; }
         .status-unmatched { color: #ffc107; font-weight: bold; }
         .status-manual-match { color: #17a2b8; font-weight: bold; }
         .status-chargeback { color: #dc3545; font-weight: bold; }
+        .status-invalid-iban { color: #6c757d; font-weight: bold; }
+        .status-inactive-account { color: #fd7e14; font-weight: bold; }
         .table th { background-color: #f8f9fa; border-top: none; font-weight: 600; color: #495057; }
         .amount-positive { color: #28a745; font-weight: bold; }
         .amount-negative { color: #dc3545; font-weight: bold; }
         .confidence-high { color: #28a745; }
         .confidence-medium { color: #ffc107; }
         .confidence-low { color: #dc3545; }
-        .iban-text { font-family: monospace; font-size: 0.9em; }
+        .iban-text { font-family: monospace; font-size: 0.85em; color: #6c757d; }
+        .bank-account-cell { font-weight: 500; }
+        .explanation-btn { padding: 0.25rem 0.5rem; font-size: 0.85em; }
     </style>
 </head>
 <body>
@@ -65,25 +70,37 @@
                 <div class="card mb-4">
                     <div class="card-body">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
+                                <label class="form-label">Bank Account</label>
+                                <select class="form-select" id="bankAccountFilter">
+                                    <option value="">All Accounts</option>
+                                    <option value="DE001">DE001 - Deutsche Bank</option>
+                                    <option value="AT001">AT001 - Bank Austria</option>
+                                    <option value="CH001">CH001 - UBS Switzerland</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Status</label>
                                 <select class="form-select" id="statusFilter">
                                     <option value="">All Status</option>
                                     <option value="Matched">Matched</option>
+                                    <option value="Review">Review</option>
                                     <option value="Unmatched">Unmatched</option>
                                     <option value="Manual Match">Manual Match</option>
                                     <option value="Chargeback">Chargeback</option>
+                                    <option value="Invalid IBAN">Invalid IBAN</option>
+                                    <option value="Inactive Account">Inactive Account</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Date From</label>
                                 <input type="date" class="form-control" id="dateFrom">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">Date To</label>
                                 <input type="date" class="form-control" id="dateTo">
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <label class="form-label">&nbsp;</label>
                                 <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
                                     <i class="fas fa-filter me-1"></i>Apply Filters
@@ -101,8 +118,8 @@
                                     <tr>
                                         <th>Date</th>
                                         <th>Amount</th>
+                                        <th>Bank Account</th>
                                         <th>Reference</th>
-                                        <th>IBAN</th>
                                         <th>Status</th>
                                         <th>Confidence</th>
                                         <th>Matched Payment</th>
@@ -121,10 +138,19 @@
                                             </span>
                                         </td>
                                         <td>
-                                            <code>{{ transaction.reference or 'N/A' }}</code>
+                                            <div class="bank-account-cell">
+                                                <strong>{{ transaction.account_name or 'Unknown' }}</strong> ({{ transaction.bank_name or 'Unknown' }})
+                                                <br><small class="iban-text" title="{{ transaction.iban }}">{{ transaction.iban[:10] or 'N/A' }}...</small>
+                                            </div>
                                         </td>
                                         <td>
-                                            <span class="iban-text">{{ transaction.iban or 'N/A' }}</span>
+                                            <span title="{{ transaction.reference }}">
+                                                {% if transaction.reference == 'Auto Synced Transaction' %}
+                                                    <i class="fas fa-sync me-1"></i><em>Auto Synced</em>
+                                                {% else %}
+                                                    {{ transaction.reference or 'N/A' }}
+                                                {% endif %}
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="status-{{ transaction.status.lower().replace(' ', '-') }}">
@@ -132,13 +158,10 @@
                                             </span>
                                         </td>
                                         <td>
-                                            {% if transaction.confidence_score %}
-                                                <span class="confidence-{{ 'high' if transaction.confidence_score >= 90 else 'medium' if transaction.confidence_score >= 50 else 'low' }}">
-                                                    {{ transaction.confidence_score }}%
-                                                </span>
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
+                                            {% set conf = transaction.confidence_score or 0 %}
+                                            <span class="confidence-{{ 'high' if conf >= 90 else 'medium' if conf >= 50 else 'low' }}">
+                                                {{ conf }}%
+                                            </span>
                                         </td>
                                         <td>
                                             {% if transaction.matched_payment %}
@@ -154,19 +177,18 @@
                                             <button class="btn btn-sm btn-warning" onclick="showMatchDialog('{{ transaction.name }}')">
                                                 <i class="fas fa-link me-1"></i>Match
                                             </button>
-                                            {% else %}
-                                            <button class="btn btn-sm btn-outline-secondary"
-                                                    data-transaction-name="{{ transaction.name }}"
-                                                    data-transaction-date="{{ transaction.transaction_date }}"
-                                                    data-transaction-amount="{{ transaction.amount }}"
-                                                    data-transaction-reference="{{ transaction.reference }}"
-                                                    data-transaction-iban="{{ transaction.iban }}"
-                                                    data-transaction-status="{{ transaction.status }}"
-                                                    data-transaction-confidence="{{ transaction.confidence_score if transaction.confidence_score is not none else '' }}"
-                                                    data-transaction-matched="{{ transaction.matched_payment or '' }}"
-                                                    onclick="showTransactionDetails(this)">
-                                                <i class="fas fa-eye me-1"></i>View
+                                            {% elif transaction.status in ['Invalid IBAN', 'Inactive Account'] %}
+                                            <button class="btn btn-sm btn-outline-danger" disabled>
+                                                <i class="fas fa-times-circle me-1"></i>{{ transaction.status }}
                                             </button>
+                                            {% else %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button class="btn btn-outline-primary explanation-btn" 
+                                                        onclick="showExplanation('{{ transaction.name }}')"
+                                                        title="View matching details">
+                                                    <i class="fas fa-info-circle"></i> Explain
+                                                </button>
+                                            </div>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -249,6 +271,48 @@
         </div>
     </div>
 
+    <!-- Explanation Modal -->
+    <div class="modal fade" id="explanationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>Matching Explanation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Transaction</label>
+                        <input type="text" class="form-control" id="explainTransactionName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <input type="text" class="form-control" id="explainStatus" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Matched Payment</label>
+                        <input type="text" class="form-control" id="explainPayment" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Confidence Score</label>
+                        <div class="progress">
+                            <div class="progress-bar" id="confidenceBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small id="confidenceText" class="text-muted"></small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Component Breakdown</label>
+                        <div id="explanationDetails" class="list-group">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add Transaction Modal -->
     <div class="modal fade" id="addTransactionModal" tabindex="-1">
         <div class="modal-dialog">
@@ -326,6 +390,41 @@
                         <div class="col-md-6">
                             <label class="form-label">Matched Payment</label>
                             <input type="text" class="form-control" id="viewTransactionMatched" readonly>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Explanation Modal -->
+    <div class="modal fade" id="explanationModal" tabindex="-1" aria-labelledby="explanationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="explanationModalLabel">Matching Explanation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Confidence Score</h6>
+                            <div class="alert alert-info mb-0">
+                                <h4 id="explanationScore" style="margin: 0;">--%</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Matched Payment</h6>
+                            <p id="explanationPayment" class="mb-0"><code>-</code></p>
+                        </div>
+                    </div>
+                    <h6>Match Component Breakdown</h6>
+                    <div id="explanationDetails" class="border rounded p-3">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
                     </div>
                 </div>
@@ -430,6 +529,7 @@
         }
 
         function applyFilters() {
+            const bankAccount = document.getElementById('bankAccountFilter').value;
             const status = document.getElementById('statusFilter').value;
             const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
@@ -439,16 +539,26 @@
             rows.forEach(row => {
                 let show = true;
 
+                // Bank Account filter
+                if (bankAccount) {
+                    const bankCell = row.cells[2]?.textContent || '';
+                    if (!bankCell.includes(bankAccount)) {
+                        show = false;
+                    }
+                }
+
+                // Status filter
                 if (status) {
-                    const statusCell = row.cells[4].textContent.trim();
+                    const statusCell = row.cells[4]?.textContent || '';
                     if (!statusCell.includes(status)) {
                         show = false;
                     }
                 }
 
+                // Date range filter
                 if (dateFrom || dateTo) {
-                    const dateCell = row.cells[0].textContent.trim();
-                    const rowDate = new Date(dateCell);
+                    const dateCell = row.cells[0]?.textContent || '';
+                    const rowDate = new Date(dateCell.replace(/\D/g, '').substring(0, 8).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
 
                     if (dateFrom && rowDate < new Date(dateFrom)) {
                         show = false;
@@ -459,6 +569,67 @@
                 }
 
                 row.style.display = show ? '' : 'none';
+            });
+        }
+
+        function showExplanation(transactionName) {
+            // Fetch explanation from API
+            fetch('/api/get-explanation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transaction_name: transactionName })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const explanation = data.explanation || {};
+                    const confidence = data.confidence || 0;
+                    
+                    document.getElementById('explainTransactionName').value = transactionName;
+                    document.getElementById('explainStatus').value = data.status === 'success' ? 'Success' : 'Error';
+                    document.getElementById('explainPayment').value = data.matched_payment || 'N/A';
+                    
+                    // Update progress bar
+                    const confBar = document.getElementById('confidenceBar');
+                    confBar.style.width = confidence + '%';
+                    confBar.className = 'progress-bar ' + (confidence >= 90 ? 'bg-success' : confidence >= 50 ? 'bg-warning' : 'bg-danger');
+                    document.getElementById('confidenceText').textContent = confidence + '%';
+                    
+                    // Build explanation details
+                    let details = '';
+                    if (explanation.amount_match) {
+                        details += `<div class="list-group-item"><span class="badge bg-success me-2">✔</span><strong>Amount matched:</strong> ${explanation.amount_reason}</div>`;
+                    } else {
+                        details += `<div class="list-group-item"><span class="badge bg-secondary me-2">✖</span><strong>Amount:</strong> ${explanation.amount_reason}</div>`;
+                    }
+                    if (explanation.iban_match) {
+                        details += `<div class="list-group-item"><span class="badge bg-success me-2">✔</span><strong>IBAN matched:</strong> ${explanation.iban_reason}</div>`;
+                    } else {
+                        details += `<div class="list-group-item"><span class="badge bg-secondary me-2">✖</span><strong>IBAN:</strong> ${explanation.iban_reason}</div>`;
+                    }
+                    if (explanation.reference_match) {
+                        details += `<div class="list-group-item"><span class="badge bg-warning me-2">⚠</span><strong>Reference:</strong> ${explanation.reference_reason}</div>`;
+                    } else {
+                        details += `<div class="list-group-item"><span class="badge bg-secondary me-2">✖</span><strong>Reference:</strong> ${explanation.reference_reason}</div>`;
+                    }
+                    if (explanation.name_match) {
+                        details += `<div class="list-group-item"><span class="badge bg-success me-2">✔</span><strong>Name matched:</strong> ${explanation.name_reason}</div>`;
+                    } else {
+                        details += `<div class="list-group-item"><span class="badge bg-secondary me-2">✖</span><strong>Name:</strong> ${explanation.name_reason}</div>`;
+                    }
+                    if (explanation.reason) {
+                        details += `<div class="list-group-item"><span class="badge bg-info me-2">ℹ</span><strong>${explanation.reason}</strong></div>`;
+                    }
+                    
+                    document.getElementById('explanationDetails').innerHTML = details || '<p class="text-muted">No explanation available.</p>';
+                    new bootstrap.Modal(document.getElementById('explanationModal')).show();
+                } else {
+                    alert('Error: ' + (data.message || 'Could not fetch explanation'));
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching explanation:', err);
+                alert('Error fetching explanation');
             });
         }
 

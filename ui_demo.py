@@ -47,19 +47,25 @@ BANK_TRANSACTIONS = [
         'amount': 1250.00,
         'reference': 'INV-2026-001',
         'iban': 'DE89370400440532013000',
+        'account_name': 'DE001',
+        'bank_name': 'Deutsche Bank',
         'status': 'Matched',
-        'confidence_score': 99,
-        'matched_payment': 'PAY-001'
+        'confidence_score': 95,
+        'matched_payment': 'PAY-001',
+        'explanation': {'amount_match': True, 'iban_match': True, 'reference_match': True}
     },
     {
         'name': 'TXN002',
         'transaction_date': '2026-04-18',
-        'amount': -450.75,
+        'amount': 450.75,
         'reference': 'SUP-001',
         'iban': 'AT611904300234573201',
+        'account_name': 'AT001',
+        'bank_name': 'Bank Austria',
         'status': 'Matched',
-        'confidence_score': 95,
-        'matched_payment': 'PAY-002'
+        'confidence_score': 92,
+        'matched_payment': 'PAY-002',
+        'explanation': {'amount_match': True, 'iban_match': True, 'reference_match': False}
     },
     {
         'name': 'TXN003',
@@ -67,21 +73,158 @@ BANK_TRANSACTIONS = [
         'amount': 3200.50,
         'reference': 'INV-2026-002',
         'iban': 'DE89370400440532013000',
+        'account_name': 'DE001',
+        'bank_name': 'Deutsche Bank',
         'status': 'Unmatched',
         'confidence_score': None,
-        'matched_payment': None
+        'matched_payment': None,
+        'explanation': None
     },
     {
         'name': 'TXN004',
         'transaction_date': '2026-04-16',
-        'amount': -125.00,
+        'amount': 125.00,
         'reference': 'FEE-001',
         'iban': 'CH21002300A1023502601',
-        'status': 'Chargeback',
-        'confidence_score': None,
-        'matched_payment': None
+        'account_name': 'CH001',
+        'bank_name': 'UBS Switzerland',
+        'status': 'Inactive Account',
+        'confidence_score': 0,
+        'matched_payment': None,
+        'explanation': {'reason': 'Inactive Account'}
     }
 ]
+
+# ==================== VALIDATION & MATCHING HELPERS ====================
+
+def get_bank_account_by_iban(iban):
+    """Retrieve bank account by IBAN."""
+    for account in BANK_ACCOUNTS:
+        if account['iban'] == iban:
+            return account
+    return None
+
+def is_account_active(iban):
+    """Check if bank account is active."""
+    account = get_bank_account_by_iban(iban)
+    return account and account.get('status') == 'Active' if account else False
+
+def validate_transaction(transaction):
+    """Validate transaction before matching.
+    
+    Returns:
+        {
+            'valid': bool,
+            'status': str,
+            'account': dict or None,
+            'account_name': str,
+            'bank_name': str
+        }
+    """
+    iban = transaction.get('iban', '')
+    
+    account = get_bank_account_by_iban(iban)
+    if not account:
+        return {
+            'valid': False,
+            'status': 'Invalid IBAN',
+            'account': None,
+            'account_name': 'Unknown',
+            'bank_name': 'Unknown'
+        }
+    
+    if account.get('status') != 'Active':
+        return {
+            'valid': False,
+            'status': 'Inactive Account',
+            'account': account,
+            'account_name': account.get('name'),
+            'bank_name': account.get('bank_name')
+        }
+    
+    return {
+        'valid': True,
+        'status': 'Valid',
+        'account': account,
+        'account_name': account.get('name'),
+        'bank_name': account.get('bank_name')
+    }
+
+def calculate_match_score(transaction, invoice):
+    """Calculate match score with component breakdown.
+    
+    Returns:
+        {
+            'score': 0.0-1.0 (rounded to 2 decimals),
+            'confidence': 0-100 (as integer),
+            'explanation': dict with each component
+        }
+    """
+    score = 0.0
+    explanation = {
+        'amount_match': False,
+        'amount_reason': 'Amount mismatch',
+        'iban_match': False,
+        'iban_reason': 'IBAN not provided',
+        'reference_match': False,
+        'reference_reason': 'Reference not provided',
+        'name_match': False,
+        'name_reason': 'Name not provided'
+    }
+    
+    # Amount match (40%)
+    if abs(float(transaction.get('amount', 0)) - float(invoice.get('amount', 0))) < 0.01:
+        score += 0.40
+        explanation['amount_match'] = True
+        explanation['amount_reason'] = 'Exact match'
+    
+    # IBAN match (30%)
+    if transaction.get('iban') == invoice.get('iban'):
+        score += 0.30
+        explanation['iban_match'] = True
+        explanation['iban_reason'] = 'Exact match'
+    
+    # Reference match (20%)
+    trans_ref = str(transaction.get('reference', '')).lower()
+    inv_ref = str(invoice.get('reference', '')).lower()
+    if trans_ref and inv_ref and trans_ref in inv_ref or inv_ref in trans_ref:
+        score += 0.20
+        explanation['reference_match'] = True
+        explanation['reference_reason'] = 'Partial match'
+    
+    # Round score to 2 decimal places
+    score = round(score, 2)
+    confidence = int(round(score * 100))
+    
+    return {
+        'score': score,
+        'confidence': confidence,
+        'explanation': explanation
+    }
+
+# ==================== MOCK INVOICES FOR MATCHING ====================
+MOCK_INVOICES = [
+    {
+        'name': 'PAY-001',
+        'amount': 1250.00,
+        'iban': 'DE89370400440532013000',
+        'reference': 'INV-2026-001'
+    },
+    {
+        'name': 'PAY-002',
+        'amount': 450.75,
+        'iban': 'AT611904300234573201',
+        'reference': 'SUP-001'
+    },
+    {
+        'name': 'PAY-003',
+        'amount': 3200.50,
+        'iban': 'DE89370400440532013000',
+        'reference': 'INV-2026-002'
+    }
+]
+
+# ==================== ROUTES ====================
 
 @app.route('/')
 def home():
@@ -113,11 +256,14 @@ def sync_account():
         'name': f'TXN{len(BANK_TRANSACTIONS) + 1:03d}',
         'transaction_date': today,
         'amount': 250.00,
-        'reference': f'SYNC-{account_name}-{today}',
+        'reference': 'Auto Synced Transaction',
         'iban': account['iban'],
+        'account_name': account['name'],
+        'bank_name': account['bank_name'],
         'status': 'Unmatched',
-        'confidence_score': None,
-        'matched_payment': None
+        'confidence_score': 0,
+        'matched_payment': None,
+        'explanation': None
     }
     BANK_TRANSACTIONS.append(new_transaction)
 
@@ -130,23 +276,86 @@ def sync_account():
 
 @app.route('/api/run-matching', methods=['POST'])
 def run_matching():
-    unmatched = [tx for tx in BANK_TRANSACTIONS if tx['status'] == 'Unmatched']
-    matched_count = 0
-    mock_payments = ['PAY-003', 'PAY-004', 'PAY-005', 'PAY-006']
+    """Run matching engine with validation."""
+    results = {
+        'matched': 0,
+        'review': 0,
+        'invalid_iban': 0,
+        'inactive_account': 0,
+        'unmatched': 0,
+        'details': []
+    }
 
-    for index, transaction in enumerate(unmatched):
-        if matched_count >= len(mock_payments):
-            break
-        transaction['status'] = 'Matched'
-        transaction['matched_payment'] = mock_payments[index]
-        transaction['confidence_score'] = 92
-        matched_count += 1
+    for transaction in BANK_TRANSACTIONS:
+        # Skip if already manually matched
+        if transaction.get('status') == 'Manual Match':
+            continue
+        
+        # Validate transaction
+        validation = validate_transaction(transaction)
+        if not validation['valid']:
+            transaction['status'] = validation['status']
+            transaction['confidence_score'] = 0
+            transaction['account_name'] = validation['account_name']
+            transaction['bank_name'] = validation['bank_name']
+            transaction['explanation'] = {'reason': validation['status']}
+            results[validation['status'].lower().replace(' ', '_')] += 1
+            results['details'].append({
+                'transaction': transaction['name'],
+                'status': validation['status']
+            })
+            continue
+        
+        # Set account info
+        transaction['account_name'] = validation['account_name']
+        transaction['bank_name'] = validation['bank_name']
+        
+        # Try to find matches
+        best_match = None
+        best_confidence = 0
+        best_explanation = {}
+        
+        for invoice in MOCK_INVOICES:
+            result = calculate_match_score(transaction, invoice)
+            if result['confidence'] > best_confidence:
+                best_confidence = result['confidence']
+                best_explanation = result['explanation']
+                best_match = invoice
+        
+        # Ensure confidence is always assigned
+        if best_match is None:
+            best_confidence = 0
+        
+        # Assign status based on confidence
+        if best_confidence >= 90:
+            transaction['status'] = 'Matched'
+            transaction['matched_payment'] = best_match['name']
+            transaction['confidence_score'] = best_confidence
+            transaction['explanation'] = best_explanation
+            results['matched'] += 1
+        elif best_confidence >= 50:
+            transaction['status'] = 'Review'
+            transaction['matched_payment'] = best_match['name'] if best_match else None
+            transaction['confidence_score'] = best_confidence
+            transaction['explanation'] = best_explanation
+            results['review'] += 1
+        else:
+            transaction['status'] = 'Unmatched'
+            transaction['matched_payment'] = None
+            transaction['confidence_score'] = best_confidence
+            transaction['explanation'] = best_explanation
+            results['unmatched'] += 1
+        
+        results['details'].append({
+            'transaction': transaction['name'],
+            'status': transaction['status'],
+            'confidence': transaction['confidence_score']
+        })
 
     return jsonify({
         'status': 'success',
-        'message': f'Matching engine completed: {matched_count} transactions matched',
-        'transactions_matched': matched_count,
-        'total_processed': len(unmatched)
+        'message': 'Matching engine completed',
+        'results': results
     })
 
 @app.route('/api/manual-match', methods=['POST'])
@@ -161,14 +370,53 @@ def manual_match():
             'message': f'Transaction {transaction_name} not found'
         }), 404
 
+    # Validate before manual match
+    validation = validate_transaction(transaction)
+    if not validation['valid']:
+        return jsonify({
+            'status': 'error',
+            'message': f'Cannot match: {validation["status"]}'
+        }), 400
+    
+    transaction['account_name'] = validation['account_name']
+    transaction['bank_name'] = validation['bank_name']
     transaction['status'] = 'Manual Match'
     transaction['matched_payment'] = payment_name
     transaction['confidence_score'] = 100
+    transaction['explanation'] = {'reason': 'User confirmed match'}
 
     return jsonify({
         'status': 'success',
         'message': f'Transaction {transaction_name} matched to {payment_name}',
         'transaction': transaction
+    })
+
+@app.route('/api/get-explanation', methods=['POST'])
+def get_explanation():
+    """Get detailed explanation for a transaction match."""
+    transaction_name = request.json.get('transaction_name')
+    transaction = next((tx for tx in BANK_TRANSACTIONS if tx['name'] == transaction_name), None)
+    
+    if not transaction:
+        return jsonify({
+            'status': 'error',
+            'message': f'Transaction {transaction_name} not found'
+        }), 404
+    
+    if not transaction.get('explanation'):
+        return jsonify({
+            'status': 'error',
+            'message': 'No explanation available'
+        }), 400
+    
+    return jsonify({
+        'status': 'success',
+        'transaction': transaction_name,
+        'confidence': transaction.get('confidence_score'),
+        'matched_payment': transaction.get('matched_payment'),
+        'explanation': transaction.get('explanation'),
+        'account_name': transaction.get('account_name'),
+        'bank_name': transaction.get('bank_name')
     })
 
 @app.route('/api/add-bank-account', methods=['POST'])
@@ -198,9 +446,12 @@ def add_transaction():
         'amount': float(data.get('amount', 0)),
         'reference': data.get('reference', ''),
         'iban': data.get('iban', ''),
+        'account_name': 'Unknown',
+        'bank_name': 'Unknown',
         'status': data.get('status', 'Unmatched'),
-        'confidence_score': None,
-        'matched_payment': data.get('matched_payment', None)
+        'confidence_score': 0,
+        'matched_payment': data.get('matched_payment', None),
+        'explanation': None
     }
     BANK_TRANSACTIONS.append(new_transaction)
     return jsonify({
