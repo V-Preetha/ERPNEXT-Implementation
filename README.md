@@ -9,7 +9,7 @@ An intelligent banking integration system for ERPNext that automates transaction
 - Connects bank transactions to ERP invoices  
 - Automatically matches transactions using a confidence-based scoring system  
 - Provides explainable matching (why something matched)  
-- Generates SEPA payment files (pain.001) for outgoing payments  
+- Generates XML-based payment instructions for outgoing transfers (SEPA-style format)
 - Handles edge cases like invalid IBAN and inactive accounts  
 
 ---
