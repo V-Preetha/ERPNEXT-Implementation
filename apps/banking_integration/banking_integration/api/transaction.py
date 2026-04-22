@@ -3,19 +3,21 @@ import json
 from frappe import _
 from banking_integration.services.matching_engine import MatchingEngine
 from banking_integration.utils.validation import validate_iban, is_account_active, get_bank_account_by_iban
+from banking_integration.services.payments import create_payment
 
 @frappe.whitelist()
 def run_matching_engine():
     """Run matching engine for all unmatched transactions with explanations."""
     try:
-        unmatched_txs = frappe.get_all('Bank Transaction',
-            filters={'status': 'Unmatched'},
+        # Include transactions that might need re-validation (Unmatched, Invalid IBAN, Inactive Account)
+        processable_txs = frappe.get_all('Bank Transaction',
+            filters={'status': ['in', ['Unmatched', 'Invalid IBAN', 'Inactive Account']]},
             fields=['name', 'amount', 'iban', 'reference', 'name as counterparty'],
             limit_page_length=None)
         
         engine = MatchingEngine()
         results = {
-            'total': len(unmatched_txs),
+            'total': len(processable_txs),
             'matched': 0,
             'invalid_iban': 0,
             'inactive_account': 0,
@@ -23,13 +25,25 @@ def run_matching_engine():
             'matches': []
         }
         
-        for tx in unmatched_txs:
+        for tx in processable_txs:
             tx_dict = tx
             match_result = engine.auto_match(tx_dict)
             
             if match_result['matched']:
+                # Create a real payment record
                 tx_doc = frappe.get_doc('Bank Transaction', tx.name)
-                tx_doc.matched_payment = match_result['payment']
+                account_info = get_bank_account_by_iban(tx.get('iban'))
+                
+                # Create payment with transaction details
+                payment = create_payment(
+                    amount=tx.get('amount'),
+                    reference=tx.get('reference', f'Transaction {tx.name}'),
+                    iban=tx.get('iban'),
+                    bank_account=account_info.get('name') if account_info else 'Unknown',
+                    transaction_id=tx.name
+                )
+                
+                tx_doc.matched_payment = payment.payment_id
                 tx_doc.status = 'Matched'
                 tx_doc.confidence_score = match_result['score']
                 tx_doc.match_explanation = json.dumps(match_result['explanation'])
@@ -37,22 +51,34 @@ def run_matching_engine():
                 results['matched'] += 1
                 results['matches'].append({
                     'transaction': tx.name,
-                    'payment': match_result['payment'],
+                    'payment': payment.payment_id,
                     'score': match_result['score']
                 })
             elif match_result['status'] == 'invalid_iban':
                 tx_doc = frappe.get_doc('Bank Transaction', tx.name)
                 tx_doc.status = 'Invalid IBAN'
                 tx_doc.confidence_score = 0
+                tx_doc.matched_payment = None
+                tx_doc.match_explanation = None
                 tx_doc.save()
                 results['invalid_iban'] += 1
             elif match_result['status'] == 'inactive_account':
                 tx_doc = frappe.get_doc('Bank Transaction', tx.name)
                 tx_doc.status = 'Inactive Account'
                 tx_doc.confidence_score = 0
+                tx_doc.matched_payment = None
+                tx_doc.match_explanation = None
                 tx_doc.save()
                 results['inactive_account'] += 1
             else:
+                # Reset status to Unmatched if it was previously invalid but now valid
+                tx_doc = frappe.get_doc('Bank Transaction', tx.name)
+                if tx_doc.status in ['Invalid IBAN', 'Inactive Account']:
+                    tx_doc.status = 'Unmatched'
+                    tx_doc.confidence_score = 0
+                    tx_doc.matched_payment = None
+                    tx_doc.match_explanation = None
+                    tx_doc.save()
                 results['no_match'] += 1
         
         return {'status': 'success', 'message': 'Matching completed', 'results': results}

@@ -238,6 +238,10 @@ def bank_accounts():
 def transactions():
     return render_template('transactions.html', transactions=BANK_TRANSACTIONS)
 
+@app.route('/payments')
+def payments():
+    return render_template('payments.html')
+
 @app.route('/api/sync-account', methods=['POST'])
 def sync_account():
     account_name = request.json.get('account_name')
@@ -606,6 +610,69 @@ def generate_sepa_payment():
             'status': 'error',
             'message': f'Error generating XML: {str(e)}'
         }), 500
+
+# ==================== PAYMENTS API ROUTES ====================
+
+@app.route('/api/method/banking_integration.api.payments.get_payments', methods=['GET', 'POST'])
+def get_payments():
+    """Get all payments for the demo."""
+    # Convert mock invoices to payment format
+    payments = []
+    for invoice in MOCK_INVOICES:
+        payment = {
+            'payment_id': invoice['name'],
+            'amount': invoice['amount'],
+            'reference': invoice['reference'],
+            'iban': invoice['iban'],
+            'bank_account': 'DE001',  # Default bank account
+            'status': 'Completed',
+            'created_at': '2026-04-20T10:00:00Z',
+            'transaction_id': None
+        }
+        payments.append(payment)
+    
+    return jsonify({
+        'message': {
+            'status': 'success',
+            'payments': payments
+        }
+    })
+
+@app.route('/api/method/banking_integration.api.payments.get_payment_details', methods=['POST'])
+def get_payment_details():
+    """Get details for a specific payment."""
+    payment_id = request.json.get('payment_id')
+    
+    # Find the payment in mock invoices
+    payment = None
+    for invoice in MOCK_INVOICES:
+        if invoice['name'] == payment_id:
+            payment = {
+                'payment_id': invoice['name'],
+                'amount': invoice['amount'],
+                'reference': invoice['reference'],
+                'iban': invoice['iban'],
+                'bank_account': 'DE001',
+                'status': 'Completed',
+                'created_at': '2026-04-20T10:00:00Z',
+                'transaction_id': None
+            }
+            break
+    
+    if not payment:
+        return jsonify({
+            'message': {
+                'status': 'error',
+                'message': f'Payment {payment_id} not found'
+            }
+        }), 404
+    
+    return jsonify({
+        'message': {
+            'status': 'success',
+            'payment': payment
+        }
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -18,6 +18,7 @@
         "matched_payment",
         "matched_invoice",
         "confidence_score",
+        "match_explanation",
         "status",
         "chargeback_reason",
         "audit_log"
@@ -103,11 +104,16 @@
             "label": "Confidence Score"
         },
         {
+            "fieldname": "match_explanation",
+            "fieldtype": "Text",
+            "label": "Match Explanation"
+        },
+        {
             "fieldname": "status",
             "fieldtype": "Select",
             "in_list_view": 1,
             "label": "Status",
-            "options": "Unmatched\nMatched\nManual Match\nChargeback",
+            "options": "Unmatched\nMatched\nManual Match\nChargeback\nInvalid IBAN\nInactive Account",
             "default": "Unmatched"
         },
         {

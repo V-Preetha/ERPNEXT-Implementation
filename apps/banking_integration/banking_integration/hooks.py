@@ -40,3 +40,17 @@ user_data_fields = [
         "partial": 1,
     },
 ]
+
+# Website Route Rules
+website_route_rules = [
+    {"from_route": "/bank-accounts", "to_route": "bank_accounts"},
+    {"from_route": "/transactions", "to_route": "transactions"},
+    {"from_route": "/payments", "to_route": "payments"},
+]
+
+# Website Pages
+website_pages = [
+    "bank-accounts",
+    "transactions", 
+    "payments"
+]

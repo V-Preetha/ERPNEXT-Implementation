@@ -44,6 +44,9 @@
                 <a class="nav-link active" href="/transactions">
                     <i class="fas fa-exchange-alt me-1"></i>Transactions
                 </a>
+                <a class="nav-link" href="/payments">
+                    <i class="fas fa-credit-card me-1"></i>Payments
+                </a>
             </div>
         </div>
     </nav>
@@ -165,8 +168,8 @@
                                         </td>
                                         <td>
                                             {% if transaction.matched_payment %}
-                                                <a href="#" class="text-decoration-none">
-                                                    {{ transaction.matched_payment }}
+                                                <a href="#" class="text-decoration-none" onclick="showPaymentDetails('{{ transaction.matched_payment }}')">
+                                                    <i class="fas fa-credit-card me-1"></i>{{ transaction.matched_payment }}
                                                 </a>
                                             {% else %}
                                                 <span class="text-muted">-</span>
@@ -683,6 +686,95 @@
                 console.error('Add transaction failed:', error);
                 alert('Unable to add transaction. Please try again.');
             }
+        }
+
+        function showPaymentDetails(paymentId) {
+            fetch('/api/method/banking_integration.api.payments.get_payment_details', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ payment_id: paymentId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message && data.message.status === 'success') {
+                    const payment = data.message.payment;
+                    
+                    // Create a simple modal to show payment details
+                    const modalHtml = `
+                        <div class="modal fade" id="paymentDetailsModal" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Payment Details - ${payment.payment_id}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="payment-details">
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <strong>Payment ID:</strong> ${payment.payment_id}
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Status:</strong> <span class="badge bg-success">${payment.status}</span>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <strong>Amount:</strong> <span class="text-success fw-bold">€${payment.amount.toFixed(2)}</span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Reference:</strong> ${payment.reference || 'N/A'}
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <strong>IBAN:</strong> <code>${payment.iban}</code>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Bank Account:</strong> ${payment.bank_account}
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <strong>Created Date:</strong> ${new Date(payment.created_at).toLocaleString()}
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Transaction ID:</strong> ${payment.transaction_id || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <a href="/payments" class="btn btn-primary">View All Payments</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Remove existing modal if present
+                    const existingModal = document.getElementById('paymentDetailsModal');
+                    if (existingModal) {
+                        existingModal.remove();
+                    }
+                    
+                    // Add modal to body
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+                    
+                    // Show modal
+                    const modal = new bootstrap.Modal(document.getElementById('paymentDetailsModal'));
+                    modal.show();
+                } else {
+                    alert('Error loading payment details');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading payment details:', error);
+                alert('Error loading payment details');
+            });
         }
     </script>
 </body>
